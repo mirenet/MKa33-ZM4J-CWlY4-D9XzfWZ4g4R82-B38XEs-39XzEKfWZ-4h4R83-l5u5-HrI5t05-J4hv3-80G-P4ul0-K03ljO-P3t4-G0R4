@@ -1,25 +1,169 @@
 <!DOCTYPE html>
 <html>
-<body style="background:black">
+<head>
+<meta charset="UTF-8">
+<title>YouTube Player</title>
 
-<video
-    id="v"
-    controls
-    autoplay
-    playsinline
-    loop
-    width="100%">
-</video>
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<style>
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: black;
+}
+
+#player {
+    width: 100%;
+    height: 100%;
+}
+</style>
 
 <script>
-const video = document.getElementById("v");
 
-video.src =
-"https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+let player;
 
-video.play();
+function getVideoId() {
+    return new URLSearchParams(window.location.search).get("v");
+}
+
+function onYouTubeIframeAPIReady() {
+
+    player = new YT.Player("player", {
+
+        width: "100%",
+        height: "100%",
+
+        videoId: getVideoId(),
+
+        playerVars: {
+
+            autoplay: 1,
+            controls: 0,
+            rel: 0,
+            playsinline: 1,
+            enablejsapi: 1,
+
+            // promeni ako koristiš drugi domen
+            origin: "https://mirenet.github.io"
+        },
+
+        events: {
+
+            onReady: onReady,
+            onStateChange: onStateChange,
+            onError: onError
+
+        }
+    });
+
+}
+
+
+function onReady(event) {
+
+    event.target.playVideo();
+
+
+    // MediaSession test
+    if ("mediaSession" in navigator) {
+
+        console.log("MediaSession available");
+
+        navigator.mediaSession.metadata = new MediaMetadata({
+
+            title: "YouTube test",
+            artist: "My iframe player"
+
+        });
+
+
+        navigator.mediaSession.setActionHandler(
+            "play",
+            () => {
+
+                console.log("MediaSession PLAY");
+
+                event.target.playVideo();
+
+            }
+        );
+
+
+        navigator.mediaSession.setActionHandler(
+            "pause",
+            () => {
+
+                console.log("MediaSession PAUSE");
+
+                event.target.pauseVideo();
+
+            }
+        );
+    }
+
+}
+
+
+function onStateChange(event) {
+
+    console.log("YouTube state:", event.data);
+
+
+    if (event.data === YT.PlayerState.ENDED) {
+
+        parent.postMessage({
+
+            type: "ended"
+
+        }, "*");
+
+    }
+
+}
+
+
+// Error Handling
+
+const errorMessages = {
+
+    2: "Wrong video-id!",
+    5: "Error with player!",
+    100: "Video not found!",
+    101: "Embed is not allowed!",
+    150: "Embed is not allowed!"
+
+};
+
+
+function onError(event) {
+
+    const code = event.data;
+
+    const message =
+        errorMessages[code] ||
+        `Cant play video! (Error: ${code})`;
+
+
+    parent.postMessage({
+
+        type: "error",
+        message: message
+
+    }, "*");
+
+}
+
 
 </script>
+
+</head>
+
+<body>
+
+<div id="player"></div>
 
 </body>
 </html>
