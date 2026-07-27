@@ -2,59 +2,50 @@
 <html>
 <body>
 
-<button onclick="start()">Start audio</button>
+<button onclick="start()">Start</button>
 
-<audio id="audio" controls></audio>
+<audio id="player" controls></audio>
 
 <script>
-function createBeepWav() {
-    const sampleRate = 44100;
-    const seconds = 2;
-    const samples = sampleRate * seconds;
-    const buffer = new ArrayBuffer(44 + samples * 2);
-    const view = new DataView(buffer);
-
-    function writeString(offset, str) {
-        for (let i = 0; i < str.length; i++) {
-            view.setUint8(offset + i, str.charCodeAt(i));
-        }
-    }
-
-    writeString(0, "RIFF");
-    view.setUint32(4, 36 + samples * 2, true);
-    writeString(8, "WAVE");
-    writeString(12, "fmt ");
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeString(36, "data");
-    view.setUint32(40, samples * 2, true);
-
-    for (let i = 0; i < samples; i++) {
-        let t = i / sampleRate;
-        let value = Math.sin(2 * Math.PI * 440 * t) * 0.2;
-        view.setInt16(44 + i * 2, value * 32767, true);
-    }
-
-    return URL.createObjectURL(new Blob([buffer], {type:"audio/wav"}));
-}
-
 function start() {
-    const audio = document.getElementById("audio");
-    audio.src = createBeepWav();
-    audio.loop = true;
+    const audio = document.getElementById("player");
+
+    const wav = new ArrayBuffer(44100 * 2 + 44);
+    const view = new DataView(wav);
+
+    // jednostavan WAV header
+    function write(pos, str) {
+        for (let i = 0; i < str.length; i++)
+            view.setUint8(pos+i, str.charCodeAt(i));
+    }
+
+    write(0,"RIFF");
+    view.setUint32(4, wav.byteLength-8, true);
+    write(8,"WAVE");
+    write(12,"fmt ");
+    view.setUint32(16,16,true);
+    view.setUint16(20,1,true);
+    view.setUint16(22,1,true);
+    view.setUint32(24,44100,true);
+    view.setUint32(28,88200,true);
+    view.setUint16(32,2,true);
+    view.setUint16(34,16,true);
+    write(36,"data");
+    view.setUint32(40,wav.byteLength-44,true);
+
+    for(let i=44;i<wav.byteLength;i+=2){
+        let s=Math.sin(2*Math.PI*440*(i/2)/44100)*0.2;
+        view.setInt16(i,s*32767,true);
+    }
+
+    audio.src = URL.createObjectURL(new Blob([wav],{type:"audio/wav"}));
+    audio.loop=true;
     audio.play();
 
-    if ("mediaSession" in navigator) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: "Test beep",
-            artist: "Web Audio Test"
-        });
-    }
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title:"WAV test",
+        artist:"GitHub Pages"
+    });
 }
 </script>
 
