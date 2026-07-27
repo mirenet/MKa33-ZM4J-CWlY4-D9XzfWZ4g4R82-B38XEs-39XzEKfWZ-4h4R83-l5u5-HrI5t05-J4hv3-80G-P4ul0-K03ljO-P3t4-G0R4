@@ -1,22 +1,62 @@
-<audio id="a" controls autoplay loop></audio>
+<!DOCTYPE html>
+<html>
+<body>
+
+<button onclick="start()">Start audio</button>
+
+<audio id="audio" controls></audio>
 
 <script>
-const ctx = new AudioContext();
-const osc = ctx.createOscillator();
-const dest = ctx.createMediaStreamDestination();
+function createBeepWav() {
+    const sampleRate = 44100;
+    const seconds = 2;
+    const samples = sampleRate * seconds;
+    const buffer = new ArrayBuffer(44 + samples * 2);
+    const view = new DataView(buffer);
 
-osc.frequency.value = 440;
-osc.connect(dest);
-osc.start();
+    function writeString(offset, str) {
+        for (let i = 0; i < str.length; i++) {
+            view.setUint8(offset + i, str.charCodeAt(i));
+        }
+    }
 
-const audio = document.getElementById("a");
-audio.srcObject = dest.stream;
-audio.play();
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + samples * 2, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, "data");
+    view.setUint32(40, samples * 2, true);
 
-if ("mediaSession" in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-        title: "Beep test",
-        artist: "Browser test"
-    });
+    for (let i = 0; i < samples; i++) {
+        let t = i / sampleRate;
+        let value = Math.sin(2 * Math.PI * 440 * t) * 0.2;
+        view.setInt16(44 + i * 2, value * 32767, true);
+    }
+
+    return URL.createObjectURL(new Blob([buffer], {type:"audio/wav"}));
+}
+
+function start() {
+    const audio = document.getElementById("audio");
+    audio.src = createBeepWav();
+    audio.loop = true;
+    audio.play();
+
+    if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: "Test beep",
+            artist: "Web Audio Test"
+        });
+    }
 }
 </script>
+
+</body>
+</html>
