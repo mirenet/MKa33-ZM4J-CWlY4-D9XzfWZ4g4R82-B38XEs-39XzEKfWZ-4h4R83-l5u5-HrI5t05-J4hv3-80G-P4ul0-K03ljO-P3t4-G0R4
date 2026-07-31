@@ -2,28 +2,55 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>YouTube Player</title>
+<title>YouTube Player Proxy</title>
 <script src="https://www.youtube.com/iframe_api"></script>
 <style>
-html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: black; }
-#player { width: 100%; height: 100%; }
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+    }
+    #player {
+        width: 100%;
+        height: 100%;
+    }
 </style>
+</head>
+<body>
+
+<div id="player"></div>
+
 <script>
 let player;
 
+// Uzimamo ID videa iz URL-a (npr. ?v=VIDEO_ID)
 function getVideoId() {
-    return new URLSearchParams(window.location.search).get("v");
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('v');
 }
 
 function onYouTubeIframeAPIReady() {
-    player = new YT.Player("player", {
-        width: "100%", height: "100%",
-        videoId: getVideoId(),
-        playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1 },
+    const videoId = getVideoId();
+    if (!videoId) return;
+
+    player = new YT.Player('player', {
+        width: '100%',
+        height: '100%',
+        videoId: videoId,
+        playerVars: {
+            'autoplay': 1,
+            'controls': 0,
+            'rel': 0,
+            'playsinline': 1,
+            'enablejsapi': 1
+        },
         events: {
-            onReady: onReady,
-            onStateChange: onStateChange,
-            onError: onError 
+            'onReady': onReady,
+            'onStateChange': onStateChange,
+            'onError': onError
         }
     });
 }
@@ -32,23 +59,39 @@ function onReady(event) {
     event.target.playVideo();
 }
 
+// Lokalna petlja (Heartbeat) koja radi i offline iz keša browsera
+setInterval(() => {
+    if (player && typeof player.getPlayerState === 'function') {
+        try {
+            let state = player.getPlayerState();
+            
+            // Ako je video u PLAYING stanju, obnavljamo heartbeat u localStorage
+            if (state === YT.PlayerState.PLAYING) {
+                localStorage.setItem('yt_heartbeat', Date.now());
+            }
+        } catch (e) {
+            // Ignoriše greške ako je pretraživač restriktivan
+        }
+    }
+}, 1000);
+
 function onStateChange(event) {
-    // 1 = PLAYING (Video je krenuo ili se odglavio)
+    // 1 = PLAYING
     if (event.data === YT.PlayerState.PLAYING) {
+        localStorage.setItem('yt_heartbeat', Date.now());
         parent.postMessage({ type: "playing" }, "*");
     }
-    // 0 = ENDED
+    
+    // 0 = ENDED (Završen video)
     if (event.data === YT.PlayerState.ENDED) {
         parent.postMessage({ type: "ended" }, "*");
     }
 }
 
 function onError(event) {
-    parent.postMessage({ type: "error", message: "Error code: " + event.data }, "*");
+    parent.postMessage({ type: "error", message: "YouTube Error: " + event.data }, "*");
 }
 </script>
-</head>
-<body>
-<div id="player"></div>
+
 </body>
 </html>
