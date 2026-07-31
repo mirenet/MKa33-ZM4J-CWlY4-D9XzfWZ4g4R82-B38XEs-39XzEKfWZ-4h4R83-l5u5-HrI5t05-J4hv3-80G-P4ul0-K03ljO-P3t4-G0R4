@@ -2,55 +2,21 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>YouTube Player Proxy</title>
+<title>YouTube Player</title>
 <script src="https://www.youtube.com/iframe_api"></script>
-<style>
-    html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: #000;
-    }
-    #player {
-        width: 100%;
-        height: 100%;
-    }
-</style>
-</head>
-<body>
-
-<div id="player"></div>
-
 <script>
 let player;
 
 function getVideoId() {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('v');
+    return new URLSearchParams(window.location.search).get("v");
 }
 
 function onYouTubeIframeAPIReady() {
-    const videoId = getVideoId();
-    if (!videoId) return;
-
-    player = new YT.Player('player', {
-        width: '100%',
-        height: '100%',
-        videoId: videoId,
-        playerVars: {
-            'autoplay': 1,
-            'controls': 0,
-            'rel': 0,
-            'playsinline': 1,
-            'enablejsapi': 1
-        },
-        events: {
-            'onReady': onReady,
-            'onStateChange': onStateChange,
-            'onError': onError
-        }
+    player = new YT.Player("player", {
+        width: "100%", height: "100%",
+        videoId: getVideoId(),
+        playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1, enablejsapi: 1 },
+        events: { onReady: onReady, onStateChange: onStateChange, onError: onError }
     });
 }
 
@@ -58,36 +24,25 @@ function onReady(event) {
     event.target.playVideo();
 }
 
-// Memorijska petlja (Heartbeat) koja se vrti u iframe-u i šalje signale roditelju
-setInterval(() => {
-    if (player && typeof player.getPlayerState === 'function') {
-        try {
-            // Ako plejer svira (bilo iz mreže, bilo iz keša dok internet ne radi)
-            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
-                window.parent.postMessage({ type: "heartbeat" }, "*");
-            }
-        } catch (e) {
-            // Ignoriše ako prozor nije dostupan
-        }
-    }
-}, 500);
-
 function onStateChange(event) {
-    // Kada video stvarno krene
+    // 1 = PLAYING (Video ide, bilo sa mreže, bilo iz keša)
     if (event.data === YT.PlayerState.PLAYING) {
-        window.parent.postMessage({ type: "playing" }, "*");
+        parent.postMessage({ type: "playing" }, "*");
     }
-    
-    // Kada se video završi
+    // 3 = BUFFERING (Keš se ispraznio, nema neta, video je stao da čeka podatke)
+    if (event.data === YT.PlayerState.BUFFERING) {
+        parent.postMessage({ type: "buffering" }, "*");
+    }
+    // 0 = ENDED
     if (event.data === YT.PlayerState.ENDED) {
-        window.parent.postMessage({ type: "ended" }, "*");
+        parent.postMessage({ type: "ended" }, "*");
     }
 }
 
 function onError(event) {
-    window.parent.postMessage({ type: "error", message: "YouTube Error: " + event.data }, "*");
+    parent.postMessage({ type: "error", message: "Error: " + event.data }, "*");
 }
 </script>
-
-</body>
+</head>
+<body style="margin:0;background:black;"><div id="player" style="width:100%;height:100%;"></div></body>
 </html>
