@@ -6,6 +6,7 @@
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
 let player;
+let lastPlayerState = -1;
 
 function getVideoId() {
     return new URLSearchParams(window.location.search).get("v");
@@ -16,33 +17,55 @@ function onYouTubeIframeAPIReady() {
         width: "100%", height: "100%",
         videoId: getVideoId(),
         playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1 },
-        events: { onReady: onReady, onStateChange: onStateChange, onError: onError }
+        events: {
+            onReady: onReady,
+            onStateChange: onStateChange,
+            onError: onError 
+        }
     });
+
+    // Lokalna petlja unutar iframe-a koja radi stalno (i offline)
+    setInterval(() => {
+        if (player && typeof player.getPlayerState === 'function') {
+            try {
+                let currentState = player.getPlayerState();
+                // Ako se stanje promenilo, pokušaj da pošalješ roditelju
+                if (currentState !== lastPlayerState) {
+                    lastPlayerState = currentState;
+                    
+                    if (currentState === YT.PlayerState.PLAYING) {
+                        parent.postMessage({ type: "playing" }, "*");
+                    } else if (currentState === YT.PlayerState.BUFFERING) {
+                        parent.postMessage({ type: "buffering" }, "*");
+                    } else if (currentState === YT.PlayerState.ENDED) {
+                        parent.postMessage({ type: "ended" }, "*");
+                    }
+                }
+            } catch (err) {
+                // Ako je mreža pukla, postMessage može da baci grešku ili da je pretraživač ignoriše, 
+                // ali kod unutar iframe-a nastavlja da se vrti u memoriji!
+            }
+        }
+    }, 500);
 }
 
 function onReady(event) {
     event.target.playVideo();
 }
 
-// Slušamo zahteve (ping) od tvog lokalnog koda
-window.addEventListener("message", function(e) {
-    if (e.data && e.data.type === "ping") {
-        // Vraćamo potvrdu da smo živi
-        event.source.postMessage({ type: "pong" }, e.origin);
-    }
-});
-
 function onStateChange(event) {
+    // Standardni event fallback
     if (event.data === YT.PlayerState.PLAYING) {
         parent.postMessage({ type: "playing" }, "*");
-    }
-    if (event.data === YT.PlayerState.ENDED) {
+    } else if (event.data === YT.PlayerState.BUFFERING) {
+        parent.postMessage({ type: "buffering" }, "*");
+    } else if (event.data === YT.PlayerState.ENDED) {
         parent.postMessage({ type: "ended" }, "*");
     }
 }
 
 function onError(event) {
-    parent.postMessage({ type: "error", message: "Error code: " + event.data }, "*");
+    parent.postMessage({ type: "error", message: "Error: " + event.data }, "*");
 }
 </script>
 </head>
