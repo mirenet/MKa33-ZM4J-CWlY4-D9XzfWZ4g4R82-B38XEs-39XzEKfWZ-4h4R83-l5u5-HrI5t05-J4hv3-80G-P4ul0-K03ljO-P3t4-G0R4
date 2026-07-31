@@ -39,8 +39,7 @@ function onYouTubeIframeAPIReady() {
             autoplay: 1,
             controls: 0,
             rel: 0,
-            playsinline: 1,
-            enablejsapi: 1
+            playsinline: 1
         },
 
         events: {
@@ -57,21 +56,6 @@ function onReady(event) {
 }
 
 function onStateChange(event) {
-    // 1 = PLAYING (Video ide, bilo sa mreže, bilo iz keša)
-    if (event.data === YT.PlayerState.PLAYING) {
-        parent.postMessage({
-            type: "playing"
-        }, "*");
-    }
-
-    // 3 = BUFFERING (Keš se ispraznio, nema neta, video je stao da čeka podatke)
-    if (event.data === YT.PlayerState.BUFFERING) {
-        parent.postMessage({
-            type: "buffering"
-        }, "*");
-    }
-
-    // 0 = ENDED
     if (event.data === YT.PlayerState.ENDED) {
         parent.postMessage({
             type: "ended"
