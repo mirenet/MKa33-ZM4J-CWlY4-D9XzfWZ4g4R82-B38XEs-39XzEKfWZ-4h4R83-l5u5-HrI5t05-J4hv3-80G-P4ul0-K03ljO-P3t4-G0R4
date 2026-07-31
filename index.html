@@ -3,23 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>YouTube Player</title>
-
 <script src="https://www.youtube.com/iframe_api"></script>
-
-<style>
-html, body {
-    margin: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: black;
-}
-#player {
-    width: 100%;
-    height: 100%;
-}
-</style>
-
 <script>
 let player;
 
@@ -28,24 +12,11 @@ function getVideoId() {
 }
 
 function onYouTubeIframeAPIReady() {
-    // Odmah po pokretanju API-ja javljamo da kreće učitavanje
-    parent.postMessage({ type: "loading" }, "*");
-
     player = new YT.Player("player", {
-        width: "100%",
-        height: "100%",
+        width: "100%", height: "100%",
         videoId: getVideoId(),
-        playerVars: {
-            autoplay: 1,
-            controls: 0,
-            rel: 0,
-            playsinline: 1
-        },
-        events: {
-            onReady: onReady,
-            onStateChange: onStateChange,
-            onError: onError 
-        }
+        playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1 },
+        events: { onReady: onReady, onStateChange: onStateChange, onError: onError }
     });
 }
 
@@ -53,40 +24,27 @@ function onReady(event) {
     event.target.playVideo();
 }
 
-function onStateChange(event) {
-    // YT.PlayerState.BUFFERING (3) -> veza puca / kasni / ucitava se
-    if (event.data === YT.PlayerState.BUFFERING) {
-        parent.postMessage({ type: "buffering" }, "*");
+// Slušamo zahteve (ping) od tvog lokalnog koda
+window.addEventListener("message", function(e) {
+    if (e.data && e.data.type === "ping") {
+        // Vraćamo potvrdu da smo živi
+        event.source.postMessage({ type: "pong" }, e.origin);
     }
+});
 
-    // YT.PlayerState.PLAYING (1) -> video je STVARNO krenuo
+function onStateChange(event) {
     if (event.data === YT.PlayerState.PLAYING) {
         parent.postMessage({ type: "playing" }, "*");
     }
-
-    // YT.PlayerState.ENDED (0) -> zavrsen video
     if (event.data === YT.PlayerState.ENDED) {
         parent.postMessage({ type: "ended" }, "*");
     }
 }
 
-const errorMessages = {
-    2: "Wrong video-id!",
-    5: "Error with player!",
-    100: "Video not found!",
-    101: "Embed is not allowed!",
-    150: "Embed is not allowed!"
-};
-
 function onError(event) {
-    const code = event.data;
-    const message = errorMessages[code] || `Cant play video! (Error: ${code})`;
-    parent.postMessage({ type: "error", message: message }, "*");
+    parent.postMessage({ type: "error", message: "Error code: " + event.data }, "*");
 }
 </script>
-
 </head>
-<body>
-<div id="player"></div>
-</body>
+<body style="margin:0;background:black;"><div id="player" style="width:100%;height:100%;"></div></body>
 </html>
