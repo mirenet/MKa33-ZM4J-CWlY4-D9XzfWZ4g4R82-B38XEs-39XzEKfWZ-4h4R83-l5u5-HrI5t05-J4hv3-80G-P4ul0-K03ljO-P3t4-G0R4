@@ -26,7 +26,6 @@
 <script>
 let player;
 
-// Uzimamo ID videa iz URL-a (npr. ?v=VIDEO_ID)
 function getVideoId() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('v');
@@ -59,37 +58,34 @@ function onReady(event) {
     event.target.playVideo();
 }
 
-// Lokalna petlja (Heartbeat) koja radi i offline iz keša browsera
+// Memorijska petlja (Heartbeat) koja se vrti u iframe-u i šalje signale roditelju
 setInterval(() => {
     if (player && typeof player.getPlayerState === 'function') {
         try {
-            let state = player.getPlayerState();
-            
-            // Ako je video u PLAYING stanju, obnavljamo heartbeat u localStorage
-            if (state === YT.PlayerState.PLAYING) {
-                localStorage.setItem('yt_heartbeat', Date.now());
+            // Ako plejer svira (bilo iz mreže, bilo iz keša dok internet ne radi)
+            if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                window.parent.postMessage({ type: "heartbeat" }, "*");
             }
         } catch (e) {
-            // Ignoriše greške ako je pretraživač restriktivan
+            // Ignoriše ako prozor nije dostupan
         }
     }
-}, 1000);
+}, 500);
 
 function onStateChange(event) {
-    // 1 = PLAYING
+    // Kada video stvarno krene
     if (event.data === YT.PlayerState.PLAYING) {
-        localStorage.setItem('yt_heartbeat', Date.now());
-        parent.postMessage({ type: "playing" }, "*");
+        window.parent.postMessage({ type: "playing" }, "*");
     }
     
-    // 0 = ENDED (Završen video)
+    // Kada se video završi
     if (event.data === YT.PlayerState.ENDED) {
-        parent.postMessage({ type: "ended" }, "*");
+        window.parent.postMessage({ type: "ended" }, "*");
     }
 }
 
 function onError(event) {
-    parent.postMessage({ type: "error", message: "YouTube Error: " + event.data }, "*");
+    window.parent.postMessage({ type: "error", message: "YouTube Error: " + event.data }, "*");
 }
 </script>
 
