@@ -60,6 +60,12 @@ function onStateChange(event) {
         if (player && typeof player.getCurrentTime === 'function') {
             const currentTime = player.getCurrentTime();
             
+            // Šaljemo "playing" poruku zajedno sa tačnim vremenom da sprečimo neslaganje nakon pauze
+            parent.postMessage({ 
+                type: "playing", 
+                currentTime: currentTime 
+            }, "*");
+            
             // Provera da li se vreme drastično promenilo (seek preko notifikacije)
             if (Math.abs(currentTime - lastKnownTime) > 1.5) {
                 parent.postMessage({ 
@@ -68,8 +74,9 @@ function onStateChange(event) {
                 }, "*");
             }
             lastKnownTime = currentTime;
+        } else {
+            parent.postMessage({ type: "playing" }, "*");
         }
-        parent.postMessage({ type: "playing" }, "*");
     }
 
     if (event.data === YT.PlayerState.PAUSED) {
@@ -104,7 +111,7 @@ function onError(event) {
     }, "*");
 }
 
-// Slušalac za spoljne komande (npr. MediaSession / Seek sa Android notifikacije)
+// Slušalac za spoljne komande (MediaSession / Seek sa Android notifikacije)
 window.addEventListener("message", function(e) {
     if (e.data && e.data.type === "externalSeek") {
         if (player && typeof player.seekTo === 'function') {
