@@ -23,6 +23,7 @@ html, body {
 
 <script>
 let player;
+let lastKnownTime = 0;
 
 function getVideoId() {
     return new URLSearchParams(window.location.search).get("v");
@@ -50,40 +51,16 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
-let lastKnownTime = 0;
-let seekCheckInterval = null;
-
 function onReady(event) { 
     event.target.playVideo();
-    
-    // Zadržavamo interval za regularan rad u prvom planu, ali oslonac za seek na Androidu je onStateChange
-    if (seekCheckInterval) clearInterval(seekCheckInterval);
-    seekCheckInterval = setInterval(() => {
-        if (!player || typeof player.getCurrentTime !== 'function') return;
-        try {
-            const currentTime = player.getCurrentTime();
-            const playerState = player.getPlayerState();
-
-            if (playerState === YT.PlayerState.PLAYING) {
-                if (Math.abs(currentTime - lastKnownTime) > 1.5) {
-                    parent.postMessage({
-                        type: "seek",
-                        currentTime: currentTime 
-                    }, "*"); 
-                }
-                lastKnownTime = currentTime; 
-            }
-        } catch (e) {} 
-    }, 500);
 }
 
 function onStateChange(event) {
-    // Kada plejer krene (uključujući i nakon pomeranja seekbara u notifikaciji)
     if (event.data === YT.PlayerState.PLAYING) {
         if (player && typeof player.getCurrentTime === 'function') {
             const currentTime = player.getCurrentTime();
             
-            // Provera da li se vreme drastično promenilo (što znači da je korisnik pomerio seekbar)
+            // Provera da li se vreme drastično promenilo (seek preko notifikacije)
             if (Math.abs(currentTime - lastKnownTime) > 1.5) {
                 parent.postMessage({ 
                     type: "seek", 
@@ -127,8 +104,7 @@ function onError(event) {
     }, "*");
 }
 
-
-
+// Slušalac za spoljne komande (npr. MediaSession / Seek sa Android notifikacije)
 window.addEventListener("message", function(e) {
     if (e.data && e.data.type === "externalSeek") {
         if (player && typeof player.seekTo === 'function') {
@@ -137,9 +113,6 @@ window.addEventListener("message", function(e) {
         }
     }
 });
-
-
-    
 </script>
 
 </head>
