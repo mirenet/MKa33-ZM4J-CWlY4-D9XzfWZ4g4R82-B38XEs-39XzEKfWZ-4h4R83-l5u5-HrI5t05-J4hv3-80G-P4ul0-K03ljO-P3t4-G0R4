@@ -39,7 +39,8 @@ function onYouTubeIframeAPIReady() {
             autoplay: 1,
             controls: 0,
             rel: 0,
-            playsinline: 1
+            playsinline: 1,
+            enablejsapi: 1
         },
 
         events: {
@@ -51,17 +52,49 @@ function onYouTubeIframeAPIReady() {
 
 }
 
-function onReady(event) {
-    event.target.playVideo();
-}
+    let lastKnownTime = 0;
+    let seekCheckInterval = null;
 
-function onStateChange(event) {
-    if (event.data === YT.PlayerState.ENDED) {
-        parent.postMessage({
-            type: "ended"
-        }, "*");
+    function onReady(event) { 
+    event.target.playVideo();
+    
+    // Seek interval
+    if (seekCheckInterval) clearInterval(seekCheckInterval);
+    seekCheckInterval = setInterval(() => {
+    if (!player || typeof player.getCurrentTime !== 'function') return;
+     try {
+     const currentTime = player.getCurrentTime();
+     const playerState = player.getPlayerState();
+
+     if (playerState === YT.PlayerState.PLAYING) {
+     if (Math.abs(currentTime - lastKnownTime) > 1.5) {
+     parent.postMessage({
+     type: "seek",
+     currentTime: currentTime }, "*"); }
+     lastKnownTime = currentTime; }
+     } catch (e) {} }, 500);
+     }
+
+    function onStateChange(event) {
+    if (event.data === YT.PlayerState.PLAYING) {
+    if (player && typeof player.getCurrentTime === 'function') {
+    lastKnownTime = player.getCurrentTime();
     }
-}
+    parent.postMessage({ type: "playing" }, "*");
+    }
+
+    if (event.data === YT.PlayerState.PAUSED) {
+    parent.postMessage({ type: "paused" }, "*");
+    }
+
+    if (event.data === YT.PlayerState.BUFFERING) {
+    parent.postMessage({ type: "buffering" }, "*");
+    }
+
+    if (event.data === YT.PlayerState.ENDED) {
+    parent.postMessage({ type: "ended" }, "*");
+    }}
+
 
 // Error Handling
 const errorMessages = {
