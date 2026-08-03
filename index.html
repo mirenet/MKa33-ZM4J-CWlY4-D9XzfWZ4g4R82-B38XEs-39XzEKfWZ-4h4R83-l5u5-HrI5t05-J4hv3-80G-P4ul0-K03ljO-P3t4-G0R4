@@ -24,6 +24,7 @@ html, body {
 <script>
 let player;
 let lastKnownTime = 0;
+let nextTrackData = null; // Ovde čuvamo info o sledećoj pesmi koju pošalje roditelj
 
 function getVideoId() {
     return new URLSearchParams(window.location.search).get("v");
@@ -53,7 +54,7 @@ function onYouTubeIframeAPIReady() {
 
 function onReady(event) { 
     event.target.playVideo();
-    initMediaSession(); // Inicijalizujemo MediaSession kad je plejer spreman
+    initMediaSession(); // Inicijalizujemo osnovnu sesiju kad se plejer učita
 }
 
 function onStateChange(event) {
@@ -110,17 +111,33 @@ function onError(event) {
     }, "*");
 }
 
-// Slušalac za spoljne komande (ako roditelj šalje seek)
+// Slušalac poruka sa lokalne strane (prima spoljne komande i info o sledećoj pesmi)
 window.addEventListener("message", function(e) {
-    if (e.data && e.data.type === "externalSeek") {
+    if (!e.data) return;
+
+    // 1. Seek komanda sa notifikacije
+    if (e.data.type === "externalSeek") {
         if (player && typeof player.seekTo === 'function') {
             player.seekTo(e.data.seekTime, true);
             lastKnownTime = e.data.seekTime;
         }
     }
+
+    // 2. Primanje informacija o SLEDEĆOJ pesmi od roditeljske aplikacije
+    if (e.data.type === "setNextTrack") {
+        nextTrackData = e.data; // Sačuvamo podatke
+        
+        // Ažuriramo MediaSession da uključi akciju za prelazak na sledeću pesmu
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('nexttrack', function() {
+                // Kada korisnik klikne Next u Android notifikaciji, obaveštavamo roditelja
+                parent.postMessage({ type: "triggerNext" }, "*");
+            });
+        }
+    }
 });
 
-// MEDIA SESSION UNUTAR IFRAME-a
+// Osnovna MediaSession inicijalizacija za iframe
 function initMediaSession() {
     if ('mediaSession' in navigator) {
         try {
@@ -133,6 +150,8 @@ function initMediaSession() {
                 ]
             });
 
+            navigator.mediaSession.playbackState = "playing";
+
             // Seekbar sa notifikacije
             navigator.mediaSession.setActionHandler('seekto', function(details) {
                 if (details.seekTime !== undefined) {
@@ -142,11 +161,6 @@ function initMediaSession() {
                     }
                     parent.postMessage({ type: "externalSeek", seekTime: details.seekTime }, "*");
                 }
-            });
-
-            // Dugme NEXT u notifikaciji
-            navigator.mediaSession.setActionHandler('nexttrack', function() {
-                parent.postMessage({ type: "triggerNext" }, "*");
             });
         } catch (error) {
             console.log("MediaSession error in iframe:", error);
