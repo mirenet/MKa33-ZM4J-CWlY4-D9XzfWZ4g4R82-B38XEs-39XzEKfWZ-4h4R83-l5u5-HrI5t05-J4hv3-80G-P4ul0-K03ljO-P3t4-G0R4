@@ -23,13 +23,13 @@ html, body {
 
 <script>
 let player;
-let lastKnownTime = 0;
 
 function getVideoId() {
     return new URLSearchParams(window.location.search).get("v");
 }
 
 function onYouTubeIframeAPIReady() {
+
     player = new YT.Player("player", {
         width: "100%",
         height: "100%",
@@ -39,8 +39,7 @@ function onYouTubeIframeAPIReady() {
             autoplay: 1,
             controls: 0,
             rel: 0,
-            playsinline: 1,
-            enablejsapi: 1
+            playsinline: 1
         },
 
         events: {
@@ -49,46 +48,18 @@ function onYouTubeIframeAPIReady() {
             onError: onError 
         }
     });
+
 }
 
-function onReady(event) { 
+function onReady(event) {
     event.target.playVideo();
 }
 
 function onStateChange(event) {
-    if (event.data === YT.PlayerState.PLAYING) {
-        if (player && typeof player.getCurrentTime === 'function') {
-            const currentTime = player.getCurrentTime();
-            
-            // Šaljemo "playing" poruku zajedno sa tačnim vremenom da sprečimo neslaganje nakon pauze
-            parent.postMessage({ 
-                type: "playing", 
-                currentTime: currentTime 
-            }, "*");
-            
-            // Provera da li se vreme drastično promenilo (seek preko notifikacije)
-            if (Math.abs(currentTime - lastKnownTime) > 1.5) {
-                parent.postMessage({ 
-                    type: "seek", 
-                    currentTime: currentTime 
-                }, "*");
-            }
-            lastKnownTime = currentTime;
-        } else {
-            parent.postMessage({ type: "playing" }, "*");
-        }
-    }
-
-    if (event.data === YT.PlayerState.PAUSED) {
-        parent.postMessage({ type: "paused" }, "*");
-    }
-
-    if (event.data === YT.PlayerState.BUFFERING) {
-        parent.postMessage({ type: "buffering" }, "*");
-    }
-
     if (event.data === YT.PlayerState.ENDED) {
-        parent.postMessage({ type: "ended" }, "*");
+        parent.postMessage({
+            type: "ended"
+        }, "*");
     }
 }
 
@@ -111,15 +82,6 @@ function onError(event) {
     }, "*");
 }
 
-// Slušalac za spoljne komande (MediaSession / Seek sa Android notifikacije)
-window.addEventListener("message", function(e) {
-    if (e.data && e.data.type === "externalSeek") {
-        if (player && typeof player.seekTo === 'function') {
-            player.seekTo(e.data.seekTime, true);
-            lastKnownTime = e.data.seekTime;
-        }
-    }
-});
 </script>
 
 </head>
