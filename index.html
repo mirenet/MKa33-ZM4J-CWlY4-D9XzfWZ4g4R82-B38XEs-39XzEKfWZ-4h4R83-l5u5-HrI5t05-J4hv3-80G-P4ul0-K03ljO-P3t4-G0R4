@@ -126,6 +126,20 @@ function onError(event) {
         message: message 
     }, "*");
 }
+
+
+
+window.addEventListener("message", function(e) {
+    if (e.data && e.data.type === "externalSeek") {
+        if (player && typeof player.seekTo === 'function') {
+            player.seekTo(e.data.seekTime, true);
+            lastKnownTime = e.data.seekTime;
+        }
+    }
+});
+
+
+    
 </script>
 
 </head>
