@@ -19,6 +19,22 @@ html, body {
     width: 100%;
     height: 100%;
 }
+
+/* Stilizacija za Next dugme unutar iframe-a (možeš ga podesiti da bude vidljivo ili sakriveno) */
+#iframeNextBtn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    z-index: 9999;
+    opacity: 0.7;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    font-family: sans-serif;
+    cursor: pointer;
+}
 </style>
 
 <script>
@@ -60,7 +76,7 @@ function onStateChange(event) {
         if (player && typeof player.getCurrentTime === 'function') {
             const currentTime = player.getCurrentTime();
             
-            // Šaljemo "playing" poruku zajedno sa tačnim vremenom da sprečimo neslaganje nakon pauze
+            // Šaljemo "playing" poruku zajedno sa tačnim vremenom
             parent.postMessage({ 
                 type: "playing", 
                 currentTime: currentTime 
@@ -120,10 +136,21 @@ window.addEventListener("message", function(e) {
         }
     }
 });
+
+// Inicijalizacija klika na Next dugme unutar iframe-a
+window.addEventListener('DOMContentLoaded', () => {
+    const nextBtn = document.getElementById('iframeNextBtn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function() {
+            parent.postMessage({ type: "triggerNext" }, "*");
+        });
+    }
+});
 </script>
 
 </head>
 <body>
 <div id="player"></div>
+<button id="iframeNextBtn">NEXT ➡️</button>
 </body>
 </html>
