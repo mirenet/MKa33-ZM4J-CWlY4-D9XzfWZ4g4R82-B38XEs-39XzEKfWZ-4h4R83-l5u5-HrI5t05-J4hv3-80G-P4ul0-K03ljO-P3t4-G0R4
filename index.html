@@ -19,22 +19,6 @@ html, body {
     width: 100%;
     height: 100%;
 }
-
-/* Stilizacija za Next dugme unutar iframe-a (možeš ga podesiti da bude vidljivo ili sakriveno) */
-#iframeNextBtn {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    z-index: 9999;
-    opacity: 0.7;
-    padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-    font-family: sans-serif;
-    cursor: pointer;
-}
 </style>
 
 <script>
@@ -69,6 +53,7 @@ function onYouTubeIframeAPIReady() {
 
 function onReady(event) { 
     event.target.playVideo();
+    initMediaSession(); // Inicijalizujemo MediaSession kad je plejer spreman
 }
 
 function onStateChange(event) {
@@ -76,13 +61,11 @@ function onStateChange(event) {
         if (player && typeof player.getCurrentTime === 'function') {
             const currentTime = player.getCurrentTime();
             
-            // Šaljemo "playing" poruku zajedno sa tačnim vremenom
             parent.postMessage({ 
                 type: "playing", 
                 currentTime: currentTime 
             }, "*");
             
-            // Provera da li se vreme drastično promenilo (seek preko notifikacije)
             if (Math.abs(currentTime - lastKnownTime) > 1.5) {
                 parent.postMessage({ 
                     type: "seek", 
@@ -127,7 +110,7 @@ function onError(event) {
     }, "*");
 }
 
-// Slušalac za spoljne komande (MediaSession / Seek sa Android notifikacije)
+// Slušalac za spoljne komande (ako roditelj šalje seek)
 window.addEventListener("message", function(e) {
     if (e.data && e.data.type === "externalSeek") {
         if (player && typeof player.seekTo === 'function') {
@@ -137,20 +120,43 @@ window.addEventListener("message", function(e) {
     }
 });
 
-// Inicijalizacija klika na Next dugme unutar iframe-a
-window.addEventListener('DOMContentLoaded', () => {
-    const nextBtn = document.getElementById('iframeNextBtn');
-    if (nextBtn) {
-        nextBtn.addEventListener('click', function() {
-            parent.postMessage({ type: "triggerNext" }, "*");
-        });
+// MEDIA SESSION UNUTAR IFRAME-a
+function initMediaSession() {
+    if ('mediaSession' in navigator) {
+        try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: "Pustaj Muziku",
+                artist: "Online Player",
+                album: "Streaming",
+                artwork: [
+                    { src: 'https://cdn-icons-png.flaticon.com/512/3163/3163611.png', sizes: '512x512', type: 'image/png' }
+                ]
+            });
+
+            // Seekbar sa notifikacije
+            navigator.mediaSession.setActionHandler('seekto', function(details) {
+                if (details.seekTime !== undefined) {
+                    if (player && typeof player.seekTo === 'function') {
+                        player.seekTo(details.seekTime, true);
+                        lastKnownTime = details.seekTime;
+                    }
+                    parent.postMessage({ type: "externalSeek", seekTime: details.seekTime }, "*");
+                }
+            });
+
+            // Dugme NEXT u notifikaciji
+            navigator.mediaSession.setActionHandler('nexttrack', function() {
+                parent.postMessage({ type: "triggerNext" }, "*");
+            });
+        } catch (error) {
+            console.log("MediaSession error in iframe:", error);
+        }
     }
-});
+}
 </script>
 
 </head>
 <body>
 <div id="player"></div>
-<button id="iframeNextBtn">NEXT ➡️</button>
 </body>
 </html>
