@@ -29,7 +29,6 @@ function getVideoId() {
 }
 
 function onYouTubeIframeAPIReady() {
-
     player = new YT.Player("player", {
         width: "100%",
         height: "100%",
@@ -49,52 +48,65 @@ function onYouTubeIframeAPIReady() {
             onError: onError 
         }
     });
-
 }
 
-    let lastKnownTime = 0;
-    let seekCheckInterval = null;
+let lastKnownTime = 0;
+let seekCheckInterval = null;
 
-    function onReady(event) { 
+function onReady(event) { 
     event.target.playVideo();
     
-    // Seek interval
+    // Zadržavamo interval za regularan rad u prvom planu, ali oslonac za seek na Androidu je onStateChange
     if (seekCheckInterval) clearInterval(seekCheckInterval);
     seekCheckInterval = setInterval(() => {
-    if (!player || typeof player.getCurrentTime !== 'function') return;
-     try {
-     const currentTime = player.getCurrentTime();
-     const playerState = player.getPlayerState();
+        if (!player || typeof player.getCurrentTime !== 'function') return;
+        try {
+            const currentTime = player.getCurrentTime();
+            const playerState = player.getPlayerState();
 
-     if (playerState === YT.PlayerState.PLAYING) {
-     if (Math.abs(currentTime - lastKnownTime) > 1.0) {
-     parent.postMessage({
-     type: "seek",
-     currentTime: currentTime }, "*"); }
-     lastKnownTime = currentTime; }
-     } catch (e) {} }, 300);
-     }
+            if (playerState === YT.PlayerState.PLAYING) {
+                if (Math.abs(currentTime - lastKnownTime) > 1.5) {
+                    parent.postMessage({
+                        type: "seek",
+                        currentTime: currentTime 
+                    }, "*"); 
+                }
+                lastKnownTime = currentTime; 
+            }
+        } catch (e) {} 
+    }, 500);
+}
 
-    function onStateChange(event) {
+function onStateChange(event) {
+    // Kada plejer krene (uključujući i nakon pomeranja seekbara u notifikaciji)
     if (event.data === YT.PlayerState.PLAYING) {
-    if (player && typeof player.getCurrentTime === 'function') {
-    lastKnownTime = player.getCurrentTime();
-    }
-    parent.postMessage({ type: "playing" }, "*");
+        if (player && typeof player.getCurrentTime === 'function') {
+            const currentTime = player.getCurrentTime();
+            
+            // Provera da li se vreme drastično promenilo (što znači da je korisnik pomerio seekbar)
+            if (Math.abs(currentTime - lastKnownTime) > 1.5) {
+                parent.postMessage({ 
+                    type: "seek", 
+                    currentTime: currentTime 
+                }, "*");
+            }
+            lastKnownTime = currentTime;
+        }
+        parent.postMessage({ type: "playing" }, "*");
     }
 
     if (event.data === YT.PlayerState.PAUSED) {
-    parent.postMessage({ type: "paused" }, "*");
+        parent.postMessage({ type: "paused" }, "*");
     }
 
     if (event.data === YT.PlayerState.BUFFERING) {
-    parent.postMessage({ type: "buffering" }, "*");
+        parent.postMessage({ type: "buffering" }, "*");
     }
 
     if (event.data === YT.PlayerState.ENDED) {
-    parent.postMessage({ type: "ended" }, "*");
-    }}
-
+        parent.postMessage({ type: "ended" }, "*");
+    }
+}
 
 // Error Handling
 const errorMessages = {
@@ -114,7 +126,6 @@ function onError(event) {
         message: message 
     }, "*");
 }
-
 </script>
 
 </head>
