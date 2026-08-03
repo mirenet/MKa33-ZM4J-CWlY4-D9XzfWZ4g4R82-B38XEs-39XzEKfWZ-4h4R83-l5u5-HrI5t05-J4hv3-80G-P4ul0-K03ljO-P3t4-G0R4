@@ -24,7 +24,6 @@ html, body {
 <script>
 let player;
 let lastKnownTime = 0;
-let nextTrackData = null; // Ovde čuvamo info o sledećoj pesmi koju pošalje roditelj
 
 function getVideoId() {
     return new URLSearchParams(window.location.search).get("v");
@@ -54,7 +53,6 @@ function onYouTubeIframeAPIReady() {
 
 function onReady(event) { 
     event.target.playVideo();
-    initMediaSession(); // Inicijalizujemo osnovnu sesiju kad se plejer učita
 }
 
 function onStateChange(event) {
@@ -62,11 +60,13 @@ function onStateChange(event) {
         if (player && typeof player.getCurrentTime === 'function') {
             const currentTime = player.getCurrentTime();
             
+            // Šaljemo "playing" poruku zajedno sa tačnim vremenom da sprečimo neslaganje nakon pauze
             parent.postMessage({ 
                 type: "playing", 
                 currentTime: currentTime 
             }, "*");
             
+            // Provera da li se vreme drastično promenilo (seek preko notifikacije)
             if (Math.abs(currentTime - lastKnownTime) > 1.5) {
                 parent.postMessage({ 
                     type: "seek", 
@@ -111,62 +111,15 @@ function onError(event) {
     }, "*");
 }
 
-// Slušalac poruka sa lokalne strane (prima spoljne komande i info o sledećoj pesmi)
+// Slušalac za spoljne komande (MediaSession / Seek sa Android notifikacije)
 window.addEventListener("message", function(e) {
-    if (!e.data) return;
-
-    // 1. Seek komanda sa notifikacije
-    if (e.data.type === "externalSeek") {
+    if (e.data && e.data.type === "externalSeek") {
         if (player && typeof player.seekTo === 'function') {
             player.seekTo(e.data.seekTime, true);
             lastKnownTime = e.data.seekTime;
         }
     }
-
-    // 2. Primanje informacija o SLEDEĆOJ pesmi od roditeljske aplikacije
-    if (e.data.type === "setNextTrack") {
-        nextTrackData = e.data; // Sačuvamo podatke
-        
-        // Ažuriramo MediaSession da uključi akciju za prelazak na sledeću pesmu
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.setActionHandler('nexttrack', function() {
-                // Kada korisnik klikne Next u Android notifikaciji, obaveštavamo roditelja
-                parent.postMessage({ type: "triggerNext" }, "*");
-            });
-        }
-    }
 });
-
-// Osnovna MediaSession inicijalizacija za iframe
-function initMediaSession() {
-    if ('mediaSession' in navigator) {
-        try {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: "Pustaj Muziku",
-                artist: "Online Player",
-                album: "Streaming",
-                artwork: [
-                    { src: 'https://cdn-icons-png.flaticon.com/512/3163/3163611.png', sizes: '512x512', type: 'image/png' }
-                ]
-            });
-
-            navigator.mediaSession.playbackState = "playing";
-
-            // Seekbar sa notifikacije
-            navigator.mediaSession.setActionHandler('seekto', function(details) {
-                if (details.seekTime !== undefined) {
-                    if (player && typeof player.seekTo === 'function') {
-                        player.seekTo(details.seekTime, true);
-                        lastKnownTime = details.seekTime;
-                    }
-                    parent.postMessage({ type: "externalSeek", seekTime: details.seekTime }, "*");
-                }
-            });
-        } catch (error) {
-            console.log("MediaSession error in iframe:", error);
-        }
-    }
-}
 </script>
 
 </head>
