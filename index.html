@@ -67,12 +67,12 @@ function onYouTubeIframeAPIReady() {
      const playerState = player.getPlayerState();
 
      if (playerState === YT.PlayerState.PLAYING) {
-     if (Math.abs(currentTime - lastKnownTime) > 1.5) {
+     if (Math.abs(currentTime - lastKnownTime) > 1.0) {
      parent.postMessage({
      type: "seek",
      currentTime: currentTime }, "*"); }
      lastKnownTime = currentTime; }
-     } catch (e) {} }, 500);
+     } catch (e) {} }, 300);
      }
 
     function onStateChange(event) {
