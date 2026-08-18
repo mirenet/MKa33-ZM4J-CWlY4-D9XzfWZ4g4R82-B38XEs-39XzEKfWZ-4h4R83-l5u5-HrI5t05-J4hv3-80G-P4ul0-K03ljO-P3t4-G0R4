@@ -25,8 +25,9 @@ height: 100%;
 
 let player;
 
-function getVideoId() { 
-const match = window.location.search.match(/=([a-zA-Z0-9_-]{11})(?:&|$)|(?:\/|^)([a-zA-Z0-9_-]{11})(?:[/?&]|$)/); return match ? (match[1] || match[2]) : null; }
+function getVideoId() {
+return new URLSearchParams(window.location.search).get("v");
+}
 
 function onYouTubeIframeAPIReady() {
 player = new YT.Player("player", { 
