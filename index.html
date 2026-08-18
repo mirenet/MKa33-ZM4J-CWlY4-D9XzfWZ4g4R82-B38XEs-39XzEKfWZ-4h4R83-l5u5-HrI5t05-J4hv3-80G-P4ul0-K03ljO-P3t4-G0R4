@@ -67,7 +67,7 @@ const errorMessages = {
 
 function onError(event) {
 const code = event.data;
-const message = errorMessages[code] || \`Cant play video! (Error: \${code})\`;
+const message = errorMessages[code] || `Cant play video! (Error: ${code})`;
 
 parent.postMessage({
 type: "error",
