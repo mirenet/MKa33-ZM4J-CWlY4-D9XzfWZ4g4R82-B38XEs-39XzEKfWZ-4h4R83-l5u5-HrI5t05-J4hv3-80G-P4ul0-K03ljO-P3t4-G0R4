@@ -25,9 +25,9 @@ height: 100%;
 
 let player;
 
-function getVideoId() { 
-const match = window.location.href.match(/=([a-zA-Z0-9_-]{11})(?:&|$)|(?:\/|^)([a-zA-Z0-9_-]{11})(?:[/?&]|$)/); return match ? (match[1] || match[2]) : null; 
-}
+// Get Video-ID
+const match = videoUrl.match(/v=([^&]+)/);
+const videoId = match ? match[1] : null;
 
 function onYouTubeIframeAPIReady() {
 player = new YT.Player("player", { 
@@ -78,21 +78,3 @@ message: message }, "*"); }
 <div id="player"></div>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
