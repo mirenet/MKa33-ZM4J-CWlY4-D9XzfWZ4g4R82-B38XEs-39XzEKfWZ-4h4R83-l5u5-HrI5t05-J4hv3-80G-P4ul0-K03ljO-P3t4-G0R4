@@ -37,6 +37,7 @@ videoId: getVideoId() || "", // Ako nema ID u url, ostaje prazan do poruke
 host: 'https://www.youtube-nocookie.com',
 
 playerVars: {
+playlist: getVideoId() || "",
 autoplay: 1,
 controls: 0,
 showinfo: 0,
@@ -47,7 +48,7 @@ fs: 0,
 hl: sq,
 cc_lang_pref: sq,
 playsinline: 1,
-start: 5,
+start: 60,
 rel: 0
 },
 
