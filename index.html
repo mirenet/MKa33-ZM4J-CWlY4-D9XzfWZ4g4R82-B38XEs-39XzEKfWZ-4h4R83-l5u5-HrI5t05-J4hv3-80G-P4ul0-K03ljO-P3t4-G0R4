@@ -33,24 +33,12 @@ function onYouTubeIframeAPIReady() {
 player = new YT.Player("player", { 
 width: "100%",
 height: "100%",
-//videoId: getVideoId() || "", // Ako nema ID u url, ostaje prazan do poruke
-host: 'https://www.youtube-nocookie.com',
-enablejsapi: 1,
-origin: window.location.origin,
-    
+videoId: getVideoId(),
+
 playerVars: {
-playlist: getVideoId() || "",
 autoplay: 1,
 controls: 0,
-showinfo: 0,
-iv_load_policy: 3,
-cc_load_policy: 0,
-autohide: 0,
-fs: 0,
-hl: "sq",
-cc_lang_pref: "sq",
 playsinline: 1,
-start: 5,
 rel: 0
 },
 
@@ -59,21 +47,6 @@ onReady: onReady,
 onStateChange: onStateChange,
 onError: onError 
 }}); }
-
-// Load/Stop
-window.addEventListener("message", function(e) {
-    if (e.data.type === "loadVideo") {
-        if (player && typeof player.loadVideoById === 'function') {
-            player.loadVideoById(e.data.videoId);
-        }
-    } 
-    // 👉 STOP:
-    else if (e.data.type === "stopVideo") {
-        if (player && typeof player.stopVideo === 'function') {
-            player.stopVideo(); // Ovo je prava YouTube API komanda za stop
-        }
-    }
-});
 
 function onReady(event) {
 event.target.playVideo();
@@ -105,3 +78,21 @@ message: message }, "*"); }
 <div id="player"></div>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
