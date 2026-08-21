@@ -48,12 +48,20 @@ onStateChange: onStateChange,
 onError: onError 
 }}); }
 
-// Listen for loadVideo message
+// Load/Stop
 window.addEventListener("message", function(e) {
-if (e.data.type === "loadVideo") {
-if (player && typeof player.loadVideoById === 'function') {
-player.loadVideoById(e.data.videoId);
-}}});
+    if (e.data.type === "loadVideo") {
+        if (player && typeof player.loadVideoById === 'function') {
+            player.loadVideoById(e.data.videoId);
+        }
+    } 
+    // 👉 STOP:
+    else if (e.data.type === "stopVideo") {
+        if (player && typeof player.stopVideo === 'function') {
+            player.stopVideo(); // Ovo je prava YouTube API komanda za stop
+        }
+    }
+});
 
 function onReady(event) {
 event.target.playVideo();
