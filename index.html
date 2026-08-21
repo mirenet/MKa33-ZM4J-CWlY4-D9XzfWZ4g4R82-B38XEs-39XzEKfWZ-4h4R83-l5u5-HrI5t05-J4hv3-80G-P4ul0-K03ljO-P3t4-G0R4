@@ -35,9 +35,7 @@ width: "100%",
 height: "100%",
 videoId: getVideoId() || "", // Ako nema ID u url, ostaje prazan do poruke
 host: 'https://www.youtube-nocookie.com',
-enablejsapi: 1,
-origin: window.location.origin,
-    
+
 playerVars: {
 playlist: getVideoId() || "",
 autoplay: 1,
